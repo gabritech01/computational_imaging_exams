@@ -1,4 +1,4 @@
-data/
+/data/
 results/checkpoints/*.pt
 results/checkpoints/*.pth
 __pycache__/
