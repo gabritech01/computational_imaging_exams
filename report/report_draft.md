@@ -115,10 +115,183 @@ su CPU (100 iterazioni FISTA), il più rapido tra i metodi considerati nel confr
 ![](../results/fista/comparisons/sigma_0.1_00000815.jpg.png)
 
 ## 3. Metodo ibrido — PD-Net + TV
-*(da completare)*
+
+### Formulazione
+Unrolling dell'algoritmo Primal-Dual di Chambolle-Pock per il problema TV-regolarizzato:
+
+min_x  1/2||Ax-y||^2 + lambda*TV(x)
+
+A differenza di un Learned Primal-Dual generico (dove il prior è appreso implicitamente
+nello spazio dei dati), qui la variabile duale vive esplicitamente nello spazio del
+gradiente dell'immagine (operatore `Gradient`, forward differences con aggiunto = divergenza
+negata), il che lega la rete alla struttura TV richiesta dal testo invece che a un prior
+generico non specificato. Ad ogni iterazione k:
+
+```
+Gx_bar = Gradient(x_bar)
+p = p + DualNet_k([p, Gx_bar])
+
+data_grad = A^T(A(x) - y)
+GTp = Gradient.T(p)
+x_new = x + PrimalNet_k([x, data_grad, GTp])
+
+x_bar = x_new + (x_new - x)      # extrapolation, come nel Chambolle-Pock classico
+x = x_new
+```
+
+Il gradiente del data-fidelity resta calcolato esattamente (fisica nota, non appresa); solo
+gli aggiornamenti prossimali (proiezione duale, passo primale) sono sostituiti da piccole CNN
+(Conv3x3-LeakyReLU-Conv3x3), pesi indipendenti per ciascuna delle 8 iterazioni (unrolling).
+Il numero di iterazioni (8) è stato scelto euristicamente, in linea con l'ordine di grandezza
+usato nel paper originale di Adler & Öktem (Learned Primal-Dual), non da una grid search
+esaustiva per vincoli di tempo.
+
+### Training
+4 modelli specializzati (uno per livello di rumore, stessa scelta fatta per UNet, vedi
+sezione 4 per la motivazione), 1000 immagini training (sottoinsieme), degradazione generata
+al volo ad ogni epoca, loss L1, Adam (lr=2e-4), 12 epoche, validazione sul dev set fisso con
+salvataggio del checkpoint a PSNR migliore.
+
+### Risultati sul test set (80 immagini)
+
+| noise level (sigma) | PSNR medio (dB) | PSNR std | SSIM medio | SSIM std |
+|---|---|---|---|---|
+| 0.005 | 33.43 | 3.52 | 0.904 | 0.050 |
+| 0.01  | 33.84 | 3.64 | 0.910 | 0.053 |
+| 0.05  | 31.77 | 3.43 | 0.862 | 0.073 |
+| 0.1   | 30.14 | 3.27 | 0.822 | 0.088 |
+
+Tempo medio di ricostruzione: **0.0376 s/immagine** (singolo forward pass, GPU). Il checkpoint
+allenato pesa ~302 KB, circa 100 volte più piccolo di quello di UNet (~33 MB), pur ottenendo
+risultati quasi identici — conseguenza diretta dell'aver incorporato la fisica nota
+(operatori A e Gradient fissi, non appresi) direttamente nell'architettura.
+
+### Confronti visivi (originale | degradata | ricostruita PD-Net)
+
+**sigma = 0.005**
+
+![](../results/pdnet/comparisons/sigma_0.005_00000700.jpg.png)
+![](../results/pdnet/comparisons/sigma_0.005_00000734.jpg.png)
+![](../results/pdnet/comparisons/sigma_0.005_00000815.jpg.png)
+
+**sigma = 0.01**
+
+![](../results/pdnet/comparisons/sigma_0.01_00000700.jpg.png)
+![](../results/pdnet/comparisons/sigma_0.01_00000734.jpg.png)
+![](../results/pdnet/comparisons/sigma_0.01_00000815.jpg.png)
+
+**sigma = 0.05**
+
+![](../results/pdnet/comparisons/sigma_0.05_00000700.jpg.png)
+![](../results/pdnet/comparisons/sigma_0.05_00000734.jpg.png)
+![](../results/pdnet/comparisons/sigma_0.05_00000815.jpg.png)
+
+**sigma = 0.1**
+
+![](../results/pdnet/comparisons/sigma_0.1_00000700.jpg.png)
+![](../results/pdnet/comparisons/sigma_0.1_00000734.jpg.png)
+![](../results/pdnet/comparisons/sigma_0.1_00000815.jpg.png)
 
 ## 4. Metodo end-to-end — UNet
-*(da completare)*
+
+### Scelta dell'architettura
+Tra UNet, ViT e NAF-Net (le tre opzioni ammesse dal testo), si è scelta UNet: il blur è
+locale (kernel 9x9) e il rumore è per-pixel, quindi non serve catturare dipendenze a lungo
+raggio come farebbe l'attention di un ViT (più utile per task con contesto globale, es.
+inpainting di regioni ampie), e un ViT richiederebbe più dati/parametri per essere
+competitivo. NAF-Net sarebbe stata una scelta valida ma più complessa da implementare
+correttamente nel tempo disponibile. Le skip connection di UNet sono il meccanismo diretto
+per un problema dove input e output condividono quasi tutta la struttura spaziale.
+
+### Architettura
+4 livelli di downsampling (MaxPool 2x2), canali base 48 (48-96-192-384 nel bottleneck a
+16x16), blocco convoluzionale = 2x(Conv3x3 + GroupNorm + ReLU) per stadio, skip connection
+per concatenazione. Apprendimento residuale: la rete produce x_hat = y + UNet(y), impara
+solo la correzione da applicare all'osservazione invece di ricostruire l'immagine da zero
+(pratica standard nelle reti di denoising, es. DnCNN).
+
+### Training
+4 modelli specializzati (uno per livello di rumore): per un confronto equo con FISTA, che
+specializza necessariamente il parametro lambda per livello di rumore (principio di
+discrepanza), si è scelto di dare anche ai metodi deep-learning lo stesso "budget di
+specializzazione", invece di un solo modello blind generalista — così il confronto isola la
+capacità di ciascun metodo di ottenere il miglior risultato possibile a un dato livello di
+rumore, senza confondere questo con la capacità di generalizzare su più rumori
+contemporaneamente. 1000 immagini training, degradazione al volo (rumore ridisegnato ad ogni
+epoca, blur sempre fisso), loss L1, Adam (lr=2e-4), 20 epoche, validazione sul dev set fisso.
+
+### Risultati sul test set (80 immagini)
+
+| noise level (sigma) | PSNR medio (dB) | PSNR std | SSIM medio | SSIM std |
+|---|---|---|---|---|
+| 0.005 | 33.39 | 3.51 | 0.903 | 0.049 |
+| 0.01  | 34.03 | 3.73 | 0.913 | 0.052 |
+| 0.05  | 32.08 | 3.44 | 0.872 | 0.069 |
+| 0.1   | 30.49 | 3.26 | 0.836 | 0.080 |
+
+Tempo medio di ricostruzione: **0.0373 s/immagine**. Si osserva un andamento leggermente non
+monotono (PSNR a sigma=0.005 inferiore a quello a sigma=0.01): plausibilmente dovuto al fatto
+che a rumore molto basso il residuo da apprendere è molto piccolo, con un segnale di
+gradiente più debole durante l'ottimizzazione; lo stesso pattern si osserva anche in PD-Net,
+il che rafforza l'ipotesi che sia un effetto sistematico del setup di training (20 epoche,
+sottoinsieme ridotto) piuttosto che un errore isolato.
+
+### Confronti visivi (originale | degradata | ricostruita UNet)
+
+**sigma = 0.005**
+
+![](../results/unet/comparisons/sigma_0.005_00000700.jpg.png)
+![](../results/unet/comparisons/sigma_0.005_00000734.jpg.png)
+![](../results/unet/comparisons/sigma_0.005_00000815.jpg.png)
+
+**sigma = 0.01**
+
+![](../results/unet/comparisons/sigma_0.01_00000700.jpg.png)
+![](../results/unet/comparisons/sigma_0.01_00000734.jpg.png)
+![](../results/unet/comparisons/sigma_0.01_00000815.jpg.png)
+
+**sigma = 0.05**
+
+![](../results/unet/comparisons/sigma_0.05_00000700.jpg.png)
+![](../results/unet/comparisons/sigma_0.05_00000734.jpg.png)
+![](../results/unet/comparisons/sigma_0.05_00000815.jpg.png)
+
+**sigma = 0.1**
+
+![](../results/unet/comparisons/sigma_0.1_00000700.jpg.png)
+![](../results/unet/comparisons/sigma_0.1_00000734.jpg.png)
+![](../results/unet/comparisons/sigma_0.1_00000815.jpg.png)
 
 ## 5. Confronto finale tra metodi
-*(da completare)*
+
+| Metodo | PSNR (range sui 4 livelli) | SSIM (range) | Tempo/immagine |
+|---|---|---|---|
+| FISTA-Wavelet | 27.09 - 31.17 dB | 0.699 - 0.861 | 1.572 s |
+| PD-Net | 30.14 - 33.84 dB | 0.822 - 0.910 | 0.038 s |
+| UNet | 30.49 - 34.03 dB | 0.836 - 0.913 | 0.037 s |
+
+![](../results/figures/comparison_plot.png)
+
+### Discussione
+UNet e PD-Net superano nettamente FISTA (2-3 dB di PSNR in più a ogni livello di rumore): un
+metodo allenato specificamente sulla statistica del dataset KaoKore sfrutta un prior molto
+più informativo di quello generico (sparsità wavelet) usato da FISTA, che è valido per
+qualunque immagine naturale ma non specifico al dominio. UNet e PD-Net ottengono risultati
+quasi indistinguibili tra loro, ma PD-Net usa circa 100 volte meno parametri: incorporare la
+fisica nota del problema (operatore di blur, struttura del gradiente per la TV) direttamente
+nell'architettura riduce drasticamente cosa la rete deve imparare da zero, a parità di
+qualità finale. FISTA è circa 40 volte più lento (richiede 100 iterazioni di ottimizzazione
+per immagine, contro un singolo forward pass delle reti), ma è l'unico dei tre metodi che non
+richiede alcuna fase di training ed è interamente interpretabile (ogni passo dell'algoritmo
+ha un significato matematico esplicito). Il trade-off complessivo: FISTA offre
+interpretabilità e zero costo di training a scapito di qualità e velocità; UNet massimizza la
+qualità a scapito del numero di parametri; PD-Net rappresenta il miglior compromesso tra i
+tre, avvicinandosi alla qualità di UNet con una frazione dei parametri grazie all'impalcatura
+fisica esplicita.
+
+### Limiti dello studio
+Per vincoli di tempo: valutazione su un sottoinsieme fisso (80 immagini test, 20 dev) invece
+del test set completo (926 immagini); training set ridotto (1000 immagini) e numero di epoche
+limitato (20 per UNet, 12 per PD-Net) rispetto a quanto si userebbe con risorse
+computazionali illimitate. Entrambe le scelte sono state dichiarate esplicitamente e applicate
+in modo identico a tutti i metodi, per mantenere il confronto equo richiesto dal testo.
