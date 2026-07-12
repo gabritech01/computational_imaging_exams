@@ -7,7 +7,7 @@ from PIL import Image
 from torchvision.transforms.functional import to_tensor
 
 IMAGE_NAME = "00000700.jpg"
-LEVELS = [0.01, 0.1]
+LEVELS = [0.005, 0.01, 0.05, 0.1]
 
 
 def load(path):

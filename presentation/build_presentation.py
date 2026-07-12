@@ -156,26 +156,27 @@ def build():
 
     # 4. Methodology: FISTA
     s = add_content_slide(prs, "Methodology — Variational: FISTA + Wavelet")
+    add_image(s, "results/figures/formula_fista.png", 1.9, 1.3, height=0.75)
     add_bullets(s, [
-        ("min_x  1/2||Ax - y||^2 + lambda ||Wx||_1   (W: orthogonal wavelet transform)", 0),
+        ("W: orthogonal wavelet transform", 0),
         ("Non-smooth but convex -> proximal gradient method (Beck & Teboulle, 2009)", 0),
         ("For orthogonal W, prox of the L1 term = soft-thresholding of wavelet coefficients", 0),
         ("Nesterov-style extrapolation: convergence rate O(1/k^2) instead of O(1/k)", 0),
         ("Step size 1/L: L = ||A^T A|| = 1 exactly, thanks to circular boundary conditions", 0),
         ("(A becomes a symmetric circulant operator, diagonalized by the Fourier transform)", 1),
-    ])
+    ], top=2.5)
 
     # 5. Methodology: PD-Net
     s = add_content_slide(prs, "Methodology — Hybrid: PD-Net + TV")
+    add_image(s, "results/figures/formula_pdnet.png", 2.4, 1.3, height=0.75)
     add_bullets(s, [
-        ("min_x  1/2||Ax - y||^2 + lambda * TV(x)", 0),
         ("Unrolled Chambolle-Pock primal-dual algorithm", 0),
         ("Exact proximal / projection steps replaced by small learned CNN blocks", 0),
         ("Dual variable lives in gradient space (not data space): ties the network", 0),
         ("explicitly to the TV structure, unlike a generic learned primal-dual", 1),
         ("Data-fidelity gradient A^T(Ax-y) stays exact (not learned) at every iteration", 0),
         ("-> hybrid: known physics + learned correction, not a black box", 1),
-    ])
+    ], top=2.5)
 
     # 6. Methodology: UNet
     s = add_content_slide(prs, "Methodology — End-to-end: UNet")
@@ -186,8 +187,9 @@ def build():
         ("in the available time", 1),
         ("Encoder-decoder with skip connections: preserve fine spatial detail across", 0),
         ("the bottleneck, needed since input and output share almost all structure", 1),
-        ("Residual learning: x_hat = y + UNet(y), the network only learns the correction", 0),
+        ("Residual learning (the network only learns the correction):", 0),
     ])
+    add_image(s, "results/figures/formula_unet_residual.png", 2.9, 4.9, height=0.65)
 
     # 7. Implementation: FISTA
     s = add_content_slide(prs, "Implementation — FISTA + Wavelet")
@@ -243,7 +245,7 @@ def build():
 
     # 13. Results visual comparison
     s = add_content_slide(prs, "Numerical results — visual comparison")
-    add_image(s, "results/figures/composite_comparison.png", 0.6, 1.2, width=12.1)
+    add_image(s, "results/figures/composite_comparison.png", 3.1, 1.2, height=6.15)
 
     # 14. Conclusions
     s = add_content_slide(prs, "Conclusions")
@@ -258,17 +260,6 @@ def build():
         ("Future work: full test set and training set, more epochs, add the 4th method", 0),
         ("(Diffusion + DPS), try NAF-Net as an alternative end-to-end architecture", 1),
     ])
-
-    # 15. Bibliography
-    s = add_content_slide(prs, "Bibliography")
-    add_bullets(s, [
-        ("A. Beck, M. Teboulle. \"A Fast Iterative Shrinkage-Thresholding Algorithm for Linear Inverse Problems.\" SIAM J. Imaging Sciences, 2009.", 0),
-        ("A. Chambolle, T. Pock. \"A First-Order Primal-Dual Algorithm for Convex Problems with Applications to Imaging.\" JMIV, 2011.", 0),
-        ("J. Adler, O. Öktem. \"Learned Primal-Dual Reconstruction.\" IEEE Trans. Medical Imaging, 2018.", 0),
-        ("O. Ronneberger, P. Fischer, T. Brox. \"U-Net: Convolutional Networks for Biomedical Image Segmentation.\" MICCAI, 2015.", 0),
-        ("Y. Tian et al. \"KaoKore: A Pre-modern Japanese Art Facial Expression Dataset.\" 2020 (dataset).", 0),
-        ("D. Evangelista. IPPy library (course material), reused/adapted for the Blurring, Gradient operators and the Learned Primal-Dual design pattern.", 0),
-    ], size=15)
 
     prs.save("presentation/presentation.pptx")
     print("saved presentation/presentation.pptx")
