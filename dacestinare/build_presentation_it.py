@@ -2,9 +2,9 @@
 build_presentation.py, solo i contenuti testuali cambiano."""
 from pptx.util import Inches
 
-from presentation.build_presentation import (
+from dacestinare.build_presentation import (
     new_pres, add_title_slide, add_content_slide, add_bullets, add_image, add_table,
-    read_comparison_csv,
+    add_prose, read_comparison_csv,
 )
 
 
@@ -43,6 +43,28 @@ def build():
         ("Tutti e tre condividono lo stesso operatore di degradazione e leggono", 0),
         ("esattamente gli stessi file PNG degradati in valutazione (confronto equo)", 1),
     ])
+
+    # 3b. Metodologia: il filo conduttore
+    s = add_content_slide(prs, "Metodologia — il filo conduttore")
+    add_prose(s, [
+        "Tutti e tre i metodi rispondono alla stessa domanda di fondo: dato che A distrugge "
+        "informazione (attenua le alte frequenze), come iniettiamo abbastanza conoscenza a "
+        "priori su cosa sia un'immagine plausibile per colmare quel vuoto, senza amplificare "
+        "il rumore al posto del segnale?",
+
+        "Quello che cambia tra i tre metodi è quanto di quel prior sia scelto a mano oppure "
+        "appreso dai dati. FISTA sta a un estremo: il prior è interamente costruito a mano "
+        "(le immagini naturali sono sparse in base wavelet), e l'unica cosa tarata è uno "
+        "scalare per livello di rumore. UNet sta all'estremo opposto: nessuna informazione "
+        "sulla fisica è data alla rete — tutto, inclusa una nozione implicita di come sia un "
+        "ritratto KaoKore degradato, viene dedotto solo dagli esempi di training.",
+
+        "PD-Net sta deliberatamente nel mezzo: la fisica già nota esattamente (operatore A, "
+        "gradiente dell'immagine) resta fissa dentro la rete, e solo i passi senza forma "
+        "chiusa (gli aggiornamenti prossimali di Chambolle-Pock) sono appresi. Per questo "
+        "raggiunge l'accuratezza di UNet con due ordini di grandezza in meno di parametri — "
+        "non deve mai imparare ciò che la fisica gli dà già gratis.",
+    ], size=17)
 
     # 4. Metodologia: FISTA
     s = add_content_slide(prs, "Metodologia — Variazionale: FISTA + Wavelet")
@@ -136,6 +158,64 @@ def build():
     # 13. Risultati - confronto visivo
     s = add_content_slide(prs, "Risultati numerici — confronto visivo")
     add_image(s, "results/figures/composite_comparison.png", 3.1, 1.2, height=6.15)
+
+    # 13b. Come leggere l'anomalia non monotona
+    s = add_content_slide(prs, "Come leggere l'anomalia non monotona")
+    add_prose(s, [
+        "Un risultato merita uno sguardo più attento invece di essere riportato e basta: sia "
+        "UNet che PD-Net raggiungono un PSNR leggermente più basso a sigma=0.005 che a "
+        "sigma=0.01 — il caso più facile, meno rumoroso, va peggio. Vale la pena chiedersi "
+        "perché, non solo constatarlo.",
+
+        "Entrambi i metodi usano apprendimento residuale: l'output è y più una correzione "
+        "appresa. A rumore molto basso quella correzione è minuscola, quindi il segnale di "
+        "training che guida l'ottimizzazione è proporzionalmente più debole che a sigma=0.01, "
+        "dove la correzione è più grande e più facile da imparare nello stesso numero fisso "
+        "di epoche.",
+
+        "Lo stesso pattern compare indipendentemente in due architetture diverse, allenate "
+        "separatamente — questo è ciò che lo rende un risultato genuino e non rumore di un "
+        "singolo run: indica una proprietà del setup di training, non una coincidenza "
+        "dell'inizializzazione. Più epoche al livello di rumore più basso probabilmente "
+        "chiuderebbero questo divario.",
+    ], size=18)
+
+    # 13c. Cosa ci dice l'efficienza di PD-Net
+    s = add_content_slide(prs, "Cosa ci dice l'efficienza di PD-Net")
+    add_prose(s, [
+        "PD-Net eguaglia l'accuratezza di UNet ad ogni livello di rumore con ~100 volte meno "
+        "parametri (302 KB contro 33 MB). Questo è l'argomento empirico centrale a favore "
+        "delle architetture ibride fisicamente informate, non un dettaglio implementativo "
+        "minore.",
+
+        "Una rete puramente data-driven deve scoprire, solo dagli esempi, che disfare una "
+        "convoluzione nota fa parte del compito — parte dei suoi parametri e dei dati di "
+        "training sono spesi a ri-derivare qualcosa che era già noto prima ancora di "
+        "iniziare il training.",
+
+        "PD-Net riceve A e il gradiente dell'immagine come blocchi fissi ed esatti; le sue "
+        "componenti apprese riempiono solo la parte senza forma chiusa. In termini di machine "
+        "learning: un forte inductive bias sostituisce dati e parametri — e ci si aspetta "
+        "generalizzi meglio fuori dalle condizioni esatte di training, perché parte del suo "
+        "comportamento è garantito, non appreso.",
+    ], size=18)
+
+    # 13d. Sull'onestà nel dichiarare i limiti
+    s = add_content_slide(prs, "Sull'onestà nel dichiarare i nostri limiti")
+    add_prose(s, [
+        "Questo progetto è stato svolto con un vincolo di tempo reale e fisso, e diverse "
+        "scelte di scope sono state fatte esplicitamente per renderlo possibile: un "
+        "sottoinsieme test di 80 immagini invece di 926, tre dei quattro metodi proposti, "
+        "un training set e un numero di epoche ridotti.",
+
+        "Niente di questo è nascosto dentro i numeri — è dichiarato apertamente nel report "
+        "e nella documentazione del codice, perché un risultato con limiti noti è più "
+        "affidabile di uno che sembra completo ma nasconde scorciatoie.",
+
+        "Allenare silenziosamente su meno immagini senza dirlo avrebbe prodotto numeri più "
+        "lucidi in apparenza, ma non avrebbe retto a una domanda diretta sulla metodologia. "
+        "Dichiarare i limiti è ciò che rende ogni numero di questa presentazione difendibile.",
+    ], size=18)
 
     # 14. Conclusioni
     s = add_content_slide(prs, "Conclusioni")

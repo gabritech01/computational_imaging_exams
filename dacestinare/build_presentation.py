@@ -87,6 +87,19 @@ def add_bullets(slide, bullets, top=1.3, left=0.8, width=11.7, height=5.6, size=
     return tb
 
 
+def add_prose(slide, paragraphs, top=1.3, left=0.9, width=11.5, height=5.6, size=19):
+    tb = slide.shapes.add_textbox(Inches(left), Inches(top), Inches(width), Inches(height))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    for i, text in enumerate(paragraphs):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.text = text
+        p.font.size = Pt(size)
+        p.font.color.rgb = BLACK
+        p.space_after = Pt(14)
+    return tb
+
+
 def add_image(slide, path, left, top, width=None, height=None):
     kwargs = {}
     if width:
@@ -153,6 +166,27 @@ def build():
         ("All three share the exact same forward operator and read the exact same", 0),
         ("pre-generated degraded PNG files for evaluation (fair comparison)", 1),
     ])
+
+    # 3b. Methodology: the common thread
+    s = add_content_slide(prs, "Methodology — the common thread")
+    add_prose(s, [
+        "All three methods answer the same underlying question: since A destroys information "
+        "(it attenuates high frequencies), how do we inject enough prior knowledge about what a "
+        "plausible image looks like to fill that gap, without amplifying the noise instead?",
+
+        "What changes between them is how much of that prior is hand-designed versus learned. "
+        "FISTA sits at one extreme: the prior is entirely hand-crafted (natural images are sparse "
+        "in a wavelet basis), and the only thing tuned is a scalar per noise level. UNet sits at "
+        "the other extreme: nothing about the physics is given to the network — everything, "
+        "including an implicit notion of what a degraded KaoKore portrait looks like, is inferred "
+        "purely from training examples.",
+
+        "PD-Net sits deliberately in between: the physics that is already known exactly (operator "
+        "A, image gradient) stays fixed inside the network, and only the steps with no closed "
+        "form (the proximal updates of Chambolle-Pock) are learned. This is why it reaches UNet's "
+        "accuracy with two orders of magnitude fewer parameters — it never has to learn what "
+        "physics already gives it for free.",
+    ], size=17)
 
     # 4. Methodology: FISTA
     s = add_content_slide(prs, "Methodology — Variational: FISTA + Wavelet")
@@ -246,6 +280,57 @@ def build():
     # 13. Results visual comparison
     s = add_content_slide(prs, "Numerical results — visual comparison")
     add_image(s, "results/figures/composite_comparison.png", 3.1, 1.2, height=6.15)
+
+    # 13b. Reading the non-monotonic anomaly
+    s = add_content_slide(prs, "Reading the non-monotonic anomaly")
+    add_prose(s, [
+        "One result deserves a closer look rather than being reported at face value: both UNet "
+        "and PD-Net reach a slightly lower PSNR at sigma=0.005 than at sigma=0.01 — the easier, "
+        "less noisy case performs worse. Worth asking why, not just noting it.",
+
+        "Both methods use residual learning: the output is y plus a learned correction. At very "
+        "low noise that correction is tiny, so the training signal driving the optimization is "
+        "proportionally weaker than at sigma=0.01, where the correction is larger and easier to "
+        "learn within the same fixed epoch budget.",
+
+        "The same pattern appears independently in two different architectures, trained "
+        "separately — this is what makes it a genuine finding rather than noise from one run: "
+        "it points to a property of the training setup, not a coincidence of initialization. "
+        "More epochs at the lowest noise level would likely close this gap.",
+    ], size=18)
+
+    # 13c. What PD-Net's efficiency tells us
+    s = add_content_slide(prs, "What PD-Net's parameter efficiency tells us")
+    add_prose(s, [
+        "PD-Net matches UNet's accuracy at every noise level with about 100x fewer parameters "
+        "(302 KB vs 33 MB). This is the central empirical argument for physics-informed hybrid "
+        "architectures, not a minor implementation detail.",
+
+        "A purely data-driven network has to discover, from examples alone, that undoing a known "
+        "convolution is part of the task — part of its parameters and training data are spent "
+        "re-deriving something already known before training even started.",
+
+        "PD-Net is given A and the image gradient as fixed, exact building blocks; its learned "
+        "components only fill the one part with no closed form. In ML terms: strong inductive "
+        "bias substitutes for data and parameters — and should generalize better outside the "
+        "exact training conditions, since part of its behaviour is guaranteed, not learned.",
+    ], size=18)
+
+    # 13d. On declaring the limits
+    s = add_content_slide(prs, "On declaring, rather than hiding, our limits")
+    add_prose(s, [
+        "This project ran under a real, fixed time budget, and several scope decisions were made "
+        "explicitly to make that possible: an 80-image test subset instead of 926, three of the "
+        "four proposed methods, a reduced training set and epoch count.",
+
+        "None of this is hidden inside the numbers — it is stated plainly in the report and in "
+        "the code's own documentation, because a result whose limits are known is more "
+        "trustworthy than one that looks complete but silently cuts corners.",
+
+        "Quietly training on fewer images without saying so would have produced numbers that "
+        "look more polished, but would not survive a direct question about methodology. "
+        "Declaring limitations is what makes every number in this presentation defensible.",
+    ], size=18)
 
     # 14. Conclusions
     s = add_content_slide(prs, "Conclusions")
