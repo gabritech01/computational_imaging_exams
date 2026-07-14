@@ -1,9 +1,8 @@
-# Report — Deblur & Denoise su KaoKore (bozza in costruzione)
+# Deblur & Denoise su KaoKore come problema inverso — Report
 
-Bozza progressiva del report finale: viene aggiornata man mano che si completa ogni metodo.
 Le sezioni di setup (dataset, operatore di degradazione, metriche) sono riassunte qui in
-forma sintetica; la spiegazione teorica completa di ogni scelta è in `NOTE_ORALE.md` (fuori
-da questa cartella).
+forma sintetica; la spiegazione teorica completa di ogni scelta è documentata a parte per
+la preparazione dell'orale.
 
 ## 1. Setup sperimentale
 
