@@ -8,6 +8,9 @@ import torch.nn as nn
 
 
 def conv_block(in_ch: int, out_ch: int) -> nn.Sequential:
+    # Uso GroupNorm invece di BatchNorm: con batch size piccolo (8, per stare nei
+    # limiti di memoria) le statistiche di BatchNorm diventano rumorose, GroupNorm
+    # non dipende dalla dimensione del batch.
     return nn.Sequential(
         nn.Conv2d(in_ch, out_ch, 3, padding=1),
         nn.GroupNorm(8, out_ch),
@@ -21,6 +24,10 @@ def conv_block(in_ch: int, out_ch: int) -> nn.Sequential:
 class UNet(nn.Module):
     def __init__(self, in_channels: int = 3, base_channels: int = 48):
         super().__init__()
+        # 4 livelli di downsampling con raddoppio dei canali ad ogni livello: una
+        # profondità standard per una UNet, sufficiente per un compito di
+        # deblur/denoise dove il degrado è locale (non serve un campo recettivo enorme
+        # come per la segmentazione di oggetti grandi).
         c1, c2, c3, c4 = base_channels, base_channels * 2, base_channels * 4, base_channels * 8
 
         self.enc1 = conv_block(in_channels, c1)
@@ -49,9 +56,15 @@ class UNet(nn.Module):
         e4 = self.enc4(self.pool(e3))
         b = self.bottleneck(self.pool(e4))
 
+        # Concateno (non sommo) le skip connection: lascio alla rete la libertà di
+        # pesare separatamente l'informazione che arriva dall'encoder e quella che
+        # arriva dal decoder, invece di forzarle a combinarsi linearmente.
         d4 = self.dec4(torch.cat([self.up4(b), e4], dim=1))
         d3 = self.dec3(torch.cat([self.up3(d4), e3], dim=1))
         d2 = self.dec2(torch.cat([self.up2(d3), e2], dim=1))
         d1 = self.dec1(torch.cat([self.up1(d2), e1], dim=1))
 
+        # Apprendimento residuale: la rete impara solo la correzione da sommare a y,
+        # non l'immagine pulita da zero -- più facile da ottimizzare perché y è già
+        # vicina a x.
         return y + self.out_conv(d1)

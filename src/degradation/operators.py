@@ -59,20 +59,27 @@ class Blurring(Operator):
         ax = torch.arange(kernel_size) - kernel_size // 2
         xx, yy = torch.meshgrid(ax, ax, indexing="ij")
         kernel = torch.exp(-(xx**2 + yy**2) / (2 * sigma**2))
+        # Normalizzo la somma a 1: mi serve per avere L=1 esatto in FISTA (vedi
+        # fista.py) senza dover stimare la costante di Lipschitz con power iteration.
         kernel /= kernel.sum()
         return kernel
 
     def _weight(self, device, dtype):
-        # depthwise kernel: same gaussian filter applied independently per channel
+        # Kernel depthwise: stesso filtro gaussiano applicato indipendentemente ad
+        # ogni canale colore, dato che il blur è un fenomeno fisico che non mescola i
+        # canali RGB tra loro.
         return self.kernel.to(device=device, dtype=dtype).expand(self.channels, 1, -1, -1)
 
     def _matvec(self, x: torch.Tensor) -> torch.Tensor:
         w = self._weight(x.device, x.dtype)
+        # Ho scelto il padding circolare (non zero-padding o reflect) proprio per
+        # rendere l'aggiunto esatto, vedi il commento sulla classe qui sopra.
         x = F.pad(x, (self.pad,) * 4, mode="circular")
         return F.conv2d(x, w, groups=self.channels)
 
     def _adjoint(self, y: torch.Tensor) -> torch.Tensor:
-        # symmetric kernel + circular boundary => the adjoint is the operator itself
+        # Kernel simmetrico + bordo circolare => l'aggiunto è l'operatore stesso, non
+        # devo flippare il kernel come farei con un bordo diverso.
         return self._matvec(y)
 
 
@@ -82,6 +89,8 @@ class Gradient(Operator):
     derivatives stacked on the channel axis."""
 
     def _matvec(self, x: torch.Tensor) -> torch.Tensor:
+        # Differenze finite in avanti: l'ultimo pixel di ogni riga/colonna resta a
+        # zero (non ha un pixel successivo con cui fare la differenza).
         gx = torch.zeros_like(x)
         gy = torch.zeros_like(x)
         gx[..., :-1, :] = x[..., 1:, :] - x[..., :-1, :]
@@ -89,6 +98,9 @@ class Gradient(Operator):
         return torch.cat((gx, gy), dim=1)
 
     def _adjoint(self, y: torch.Tensor) -> torch.Tensor:
+        # L'aggiunto del gradiente è la divergenza discreta (con segno negato): la
+        # scrivo esplicitamente sommando/sottraendo sugli shift invece di usare una
+        # formula chiusa, così resta ovvio che è la trasposta esatta di _matvec sopra.
         c = y.shape[1] // 2
         p, q = y[:, :c], y[:, c:]
         out = torch.zeros_like(p)

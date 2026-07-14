@@ -28,7 +28,12 @@ class PDNet(nn.Module):
         self.num_iterations = num_iterations
         self.channels = channels
 
+        # Il Gradient produce 2 canali (orizzontale+verticale) per ogni canale di
+        # input: la variabile duale p vive in questo spazio, non in quello dei dati.
         dual_ch = 2 * channels
+        # Do pesi indipendenti ad ogni iterazione (una CNNBlock diversa per k), non
+        # condivisi: è quello che rende questo un vero "unrolling" e non un ciclo
+        # ricorrente, dando più capacità alla rete di specializzarsi per ogni fase.
         self.dual_nets = nn.ModuleList([
             CNNBlock(dual_ch * 2, dual_ch, mid_channels) for _ in range(num_iterations)
         ])
@@ -37,18 +42,27 @@ class PDNet(nn.Module):
         ])
 
     def forward(self, y: torch.Tensor) -> torch.Tensor:
+        # Inizializzo x con l'aggiunto di A applicato a y (come nel Chambolle-Pock
+        # classico), non con y stessa: è una stima già ragionevole di x prima ancora
+        # di iniziare a iterare. La variabile duale p parte da zero.
         x = self.blur._adjoint(y)
         x_bar = x
         p = torch.zeros(y.shape[0], 2 * self.channels, y.shape[2], y.shape[3], device=y.device, dtype=y.dtype)
 
         for k in range(self.num_iterations):
+            # aggiornamento duale: al posto della proiezione prossimale esatta della
+            # TV, uso una CNN che impara un regolarizzatore più espressivo della TV
             gx_bar = self.grad._matvec(x_bar)
             p = p + self.dual_nets[k](torch.cat([p, gx_bar], dim=1))
 
+            # il gradiente del data-fidelity resta calcolato esattamente (fisica nota,
+            # non appresa) -- solo il passo di aggiornamento primale è imparato
             data_grad = self.blur._adjoint(self.blur._matvec(x) - y)
             gtp = self.grad._adjoint(p)
             x_new = x + self.primal_nets[k](torch.cat([x, data_grad, gtp], dim=1))
 
+            # extrapolation, come nel Chambolle-Pock classico (qui con theta=1): è
+            # quello che accelera la convergenza rispetto a un semplice update primale
             x_bar = x_new + (x_new - x)
             x = x_new
 
