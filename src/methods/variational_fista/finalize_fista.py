@@ -1,7 +1,8 @@
-"""Final artifacts for the FISTA method, run after lambda has been tuned on dev and
-fista_results.csv holds the per-image test metrics for the chosen lambdas. Saves every
-reconstructed test image, a few side-by-side comparison figures, per-level summary
-statistics (mean+std), and average reconstruction time."""
+"""Artefatti finali per il metodo FISTA, da eseguire dopo che lambda è stato tarato
+su dev e fista_results.csv contiene le metriche per-immagine sul test set per i
+lambda scelti. Salvo tutte le immagini test ricostruite, qualche confronto visivo
+affiancato, le statistiche riassuntive per livello (media+std) e il tempo medio di
+ricostruzione."""
 import csv
 import os
 import statistics

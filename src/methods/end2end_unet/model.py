@@ -1,8 +1,9 @@
-"""UNet for the end-to-end deblur/denoise method. 4 downsampling levels, skip
-connections carry the fine spatial detail across the bottleneck. Predicts a residual
-added to the input observation (x_hat = y + UNet(y)) rather than the clean image
-directly, since y is already close to x -- standard practice in denoising networks,
-it gives the optimizer a much easier target than reconstructing from scratch."""
+"""UNet per il metodo end-to-end di deblur/denoise. 4 livelli di downsampling, le
+skip connection portano il dettaglio spaziale fine attraverso il collo di bottiglia.
+Predice un residuo da sommare all'osservazione in input (x_hat = y + UNet(y)) invece
+dell'immagine pulita direttamente, dato che y è già vicina a x -- pratica standard
+nelle reti di denoising, dà all'ottimizzatore un obiettivo molto più facile che
+ricostruire da zero."""
 import torch
 import torch.nn as nn
 

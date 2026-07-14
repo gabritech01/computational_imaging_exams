@@ -1,8 +1,9 @@
-"""Learned Primal-Dual (PD-Net) with explicit TV structure: unrolls the
-Chambolle-Pock algorithm for min_x 1/2||Ax-y||^2 + lambda*TV(x), replacing the exact
-proximal operators with small learned CNN blocks. The dual variable lives in the
-gradient space (via the Gradient operator), which is what ties this network to TV
-regularization specifically, rather than a generic learned prior in data space."""
+"""Learned Primal-Dual (PD-Net) con struttura TV esplicita: srotola l'algoritmo di
+Chambolle-Pock per min_x 1/2||Ax-y||^2 + lambda*TV(x), sostituendo gli operatori
+prossimali esatti con piccoli blocchi CNN appresi. La variabile duale vive nello
+spazio del gradiente (tramite l'operatore Gradient), il che lega questa rete
+specificamente alla regolarizzazione TV, invece di un prior generico appreso nello
+spazio dei dati."""
 import torch
 import torch.nn as nn
 

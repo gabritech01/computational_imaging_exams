@@ -1,5 +1,5 @@
-"""Evaluates the 4 trained PD-Net checkpoints (one per noise level) on the fixed test
-subset. Same structure as finalize_fista.py / finalize_unet.py."""
+"""Valuto i 4 checkpoint PD-Net allenati (uno per livello di rumore) sul
+sottoinsieme test fisso. Stessa struttura di finalize_fista.py / finalize_unet.py."""
 import csv
 import glob
 import os

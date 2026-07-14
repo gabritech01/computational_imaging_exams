@@ -1,6 +1,6 @@
-"""Tunes lambda per noise level on the dev subset, then evaluates FISTA on the test
-subset with the chosen values. Writes results/tables/fista_results.csv and a few
-reconstructed images to results/figures/fista/ for visual comparison."""
+"""Taro lambda per livello di rumore sul sottoinsieme dev, poi valuto FISTA sul
+sottoinsieme test con i valori scelti. Scrivo results/tables/fista_results.csv e
+qualche immagine ricostruita in results/figures/fista/ per il confronto visivo."""
 import csv
 import glob
 import os

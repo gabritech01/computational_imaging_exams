@@ -1,6 +1,7 @@
-"""Evaluates the 4 trained UNet checkpoints (one per noise level) on the fixed test
-subset. Same structure as finalize_fista.py: full reconstructions, a few side-by-side
-comparison figures, per-level summary statistics, average inference time."""
+"""Valuto i 4 checkpoint UNet allenati (uno per livello di rumore) sul sottoinsieme
+test fisso. Stessa struttura di finalize_fista.py: ricostruzioni complete, qualche
+confronto visivo affiancato, statistiche riassuntive per livello, tempo medio di
+inferenza."""
 import csv
 import glob
 import os

@@ -1,7 +1,7 @@
-"""FISTA (Beck & Teboulle, 2009) for the deblurring problem regularized by wavelet
-sparsity: min_x 1/2||Ax-y||^2 + lambda*||Wx||_1, with W an orthogonal wavelet
-transform. Since W is orthogonal, the proximal operator of lambda*||Wx||_1 reduces to
-soft-thresholding the wavelet coefficients directly (see NOTE_ORALE.md)."""
+"""FISTA (Beck & Teboulle, 2009) per il problema di deblur regolarizzato con sparsità
+wavelet: min_x 1/2||Ax-y||^2 + lambda*||Wx||_1, con W trasformata wavelet ortogonale.
+Poiché W è ortogonale, l'operatore prossimale di lambda*||Wx||_1 si riduce al
+soft-thresholding diretto dei coefficienti wavelet (vedi NOTE_ORALE.md)."""
 import numpy as np
 import pywt
 import torch
@@ -24,8 +24,8 @@ def _threshold_channel(img: np.ndarray, lam: float, wavelet: str, level: int) ->
 
 
 def wavelet_soft_threshold(x: torch.Tensor, lam: float, wavelet: str = "db4", level: int = 3) -> torch.Tensor:
-    """Applies a per-channel 2D DWT, soft-thresholds the detail coefficients only
-    (the coarse approximation is left untouched), and reconstructs. x: (C,H,W)."""
+    """Applica una DWT 2D per canale, riduce solo i coefficienti di dettaglio
+    (l'approssimazione grossolana resta intatta), e ricostruisce. x: (C,H,W)."""
     arr = x.detach().cpu().numpy()
     out = np.stack([_threshold_channel(arr[c], lam, wavelet, level) for c in range(arr.shape[0])])
     return torch.from_numpy(out).to(x.dtype)
@@ -33,11 +33,11 @@ def wavelet_soft_threshold(x: torch.Tensor, lam: float, wavelet: str = "db4", le
 
 def fista_deblur(y: torch.Tensor, blur: Blurring, lam: float, n_iter: int = 100,
                   wavelet: str = "db4", level: int = 3) -> torch.Tensor:
-    """Solves the problem for a single (C,H,W) observation y. The step size is 1/L
-    with L=1: under circular boundary conditions the gaussian blur is a symmetric
-    circulant operator, whose largest singular value is exactly 1 (the kernel sums to
-    1, with the maximum attained at the zero frequency), so no power iteration is
-    needed to estimate L."""
+    """Risolve il problema per una singola osservazione y (C,H,W). Il passo è 1/L
+    con L=1: sotto condizioni al contorno circolari il blur gaussiano è un operatore
+    circolante simmetrico, il cui massimo valore singolare è esattamente 1 (il kernel
+    somma a 1, con il massimo raggiunto alla frequenza zero), quindi non serve nessuna
+    power iteration per stimare L."""
     # Inizializzo sia x che il punto estrapolato z con l'osservazione stessa: un punto
     # di partenza economico e ragionevole, dato che y è già vicina a x.
     x_prev = y.clone()
