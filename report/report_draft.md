@@ -1,8 +1,5 @@
 # Deblur & Denoise su KaoKore come problema inverso — Report
 
-Le sezioni di setup (dataset, operatore di degradazione, metriche) sono riassunte qui in
-forma sintetica; la spiegazione teorica completa di ogni scelta è documentata a parte per
-la preparazione dell'orale.
 
 ## 1. Setup sperimentale
 
